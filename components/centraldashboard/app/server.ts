@@ -2,6 +2,29 @@ import {KubeConfig} from '@kubernetes/client-node';
 import express, {Request, Response} from 'express';
 import {resolve} from 'path';
 
+interface DebugResponse {
+  user: {
+    email?: string;
+    username?: string;
+    domain?: string;
+    hasAuth?: boolean;
+    roles?: string[];
+    groups?: string[];
+  };
+  profilesServiceUrl: string;
+  codeEnvironment: string;
+  registrationFlowAllowed: boolean;
+  headersForIdentity: {
+    USERID_HEADER: string;
+    USERID_PREFIX: string;
+  };
+  debugMode: boolean;
+  allHeaders?: {[key: string]: string | string[] | undefined};
+  authorizationHeader?: string;
+  decodedJWT?: {[key: string]: unknown} | null;
+  message?: string;
+}
+
 import {Api, apiError} from './api';
 import {attachUser} from './attach_user_middleware';
 import {DefaultApi} from './clients/profile_controller';
@@ -69,7 +92,7 @@ async function main() {
   app.use(express.static(frontEnd));
   app.use(attachUser(USERID_HEADER, USERID_PREFIX));
   app.get('/debug', (req: Request, res: Response) => {
-    const response: any = {
+    const response: DebugResponse = {
       user: {
         email: req.user?.email,
         username: req.user?.username,
