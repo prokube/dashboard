@@ -15,6 +15,17 @@ interface DashboardLink {
   [key: string]: unknown;
 }
 
+/**
+ * Dashboard links configuration structure.
+ */
+interface DashboardLinksConfig {
+  menuLinks?: DashboardLink[];
+  externalLinks?: DashboardLink[];
+  quickLinks?: DashboardLink[];
+  documentationItems?: DashboardLink[];
+  [key: string]: unknown;
+}
+
 export const ERRORS = {
   no_metrics_service_configured: 'No metrics service configured',
   operation_not_supported: 'Operation not supported',
@@ -98,9 +109,9 @@ export class Api {
           '/dashboard-links',
           async (req: Request, res: Response) => {
             const cm = await this.k8sService.getConfigMap();
-            let links = {};
+            let links: DashboardLinksConfig = {};
             try {
-              links=JSON.parse(cm.data["links"]);
+              links=JSON.parse(cm.data["links"]) as DashboardLinksConfig;
               
               const userRoles = req.user?.roles || [];
               const userGroups = req.user?.groups || [];
