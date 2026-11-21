@@ -66,6 +66,26 @@ async function main() {
   app.use(express.static(frontEnd));
   app.use(attachUser(USERID_HEADER, USERID_PREFIX));
   app.get('/debug', (req: Request, res: Response) => {
+    let decodedToken = null;
+    const authHeader = req.header('Authorization');
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      try {
+        const token = authHeader.substring(7);
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(
+          Buffer.from(base64, 'base64')
+            .toString()
+            .split('')
+            .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+            .join('')
+        );
+        decodedToken = JSON.parse(jsonPayload);
+      } catch (err) {
+        decodedToken = { error: 'Failed to decode JWT', message: err.message };
+      }
+    }
+
     res.json({
       user: req.user,
       profilesServiceUrl,
@@ -75,6 +95,9 @@ async function main() {
         USERID_HEADER,
         USERID_PREFIX,
       },
+      allHeaders: req.headers,
+      authorizationHeader: authHeader ? 'present' : 'missing',
+      decodedJWT: decodedToken,
     });
   });
   app.get('/healthz', (req: Request, res: Response) => {

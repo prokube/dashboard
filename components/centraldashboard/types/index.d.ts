@@ -13,6 +13,8 @@ declare namespace User {
     domain: string;
     hasAuth: boolean;
     auth?: AuthObject;
+    roles?: string[];
+    groups?: string[];
   }
 }
 

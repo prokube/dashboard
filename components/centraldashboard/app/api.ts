@@ -83,11 +83,47 @@ export class Api {
             })
         .get(
           '/dashboard-links',
-          async (_: Request, res: Response) => {
+          async (req: Request, res: Response) => {
             const cm = await this.k8sService.getConfigMap();
             let links = {};
             try {
               links=JSON.parse(cm.data["links"]);
+              
+              const userRoles = req.user?.roles || [];
+              const userGroups = req.user?.groups || [];
+              const allUserPermissions = [...userRoles, ...userGroups];
+              
+              const filterLinks = (linkArray: any[]) => {
+                if (!linkArray) return linkArray;
+                return linkArray.filter(link => {
+                  if (link.type === 'section' && link.items) {
+                    link.items = filterLinks(link.items);
+                    return link.items.length > 0;
+                  }
+                  
+                  if (!link.requiredRoles || link.requiredRoles.length === 0) {
+                    return true;
+                  }
+                  
+                  return link.requiredRoles.some((role: string) => 
+                    allUserPermissions.includes(role)
+                  );
+                });
+              };
+              
+              if (links['menuLinks']) {
+                links['menuLinks'] = filterLinks(links['menuLinks']);
+              }
+              if (links['externalLinks']) {
+                links['externalLinks'] = filterLinks(links['externalLinks']);
+              }
+              if (links['quickLinks']) {
+                links['quickLinks'] = filterLinks(links['quickLinks']);
+              }
+              if (links['documentationItems']) {
+                links['documentationItems'] = filterLinks(links['documentationItems']);
+              }
+              
             }catch(e){
               return apiError({
                 res, code: 500,
