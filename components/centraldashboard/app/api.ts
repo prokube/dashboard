@@ -154,6 +154,9 @@ export class Api {
                 error: ERRORS.invalid_links_config,
               });
             }
+            res.setHeader('Cache-Control', 'private, no-store, no-cache, must-revalidate');
+            res.setHeader('Pragma', 'no-cache');
+            res.setHeader('Expires', '0');
             res.json(links);
           })
         .get(

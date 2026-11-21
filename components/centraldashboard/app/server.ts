@@ -35,6 +35,7 @@ const {
   PROMETHEUS_URL = undefined,
   METRICS_DASHBOARD = undefined,
   COLLECT_METRICS = "true",
+  DEBUG = "false",
 } = process.env;
 
 
@@ -62,32 +63,21 @@ async function main() {
     enableMetricsCollection(app);
   }
 
+  const debugMode = (DEBUG.toLowerCase() === "true");
+
   app.use(express.json());
   app.use(express.static(frontEnd));
   app.use(attachUser(USERID_HEADER, USERID_PREFIX));
   app.get('/debug', (req: Request, res: Response) => {
-    let decodedToken = null;
-    const authHeader = req.header('Authorization');
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      try {
-        const token = authHeader.substring(7);
-        const base64Url = token.split('.')[1];
-        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-        const jsonPayload = decodeURIComponent(
-          Buffer.from(base64, 'base64')
-            .toString()
-            .split('')
-            .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-            .join('')
-        );
-        decodedToken = JSON.parse(jsonPayload);
-      } catch (err) {
-        decodedToken = { error: 'Failed to decode JWT', message: err.message };
-      }
-    }
-
-    res.json({
-      user: req.user,
+    const response: any = {
+      user: {
+        email: req.user?.email,
+        username: req.user?.username,
+        domain: req.user?.domain,
+        hasAuth: req.user?.hasAuth,
+        roles: req.user?.roles,
+        groups: req.user?.groups,
+      },
       profilesServiceUrl,
       codeEnvironment,
       registrationFlowAllowed,
@@ -95,10 +85,38 @@ async function main() {
         USERID_HEADER,
         USERID_PREFIX,
       },
-      allHeaders: req.headers,
-      authorizationHeader: authHeader ? 'present' : 'missing',
-      decodedJWT: decodedToken,
-    });
+      debugMode,
+    };
+
+    if (debugMode) {
+      let decodedToken = null;
+      const authHeader = req.header('Authorization');
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        try {
+          const token = authHeader.substring(7);
+          const base64Url = token.split('.')[1];
+          const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+          const jsonPayload = decodeURIComponent(
+            Buffer.from(base64, 'base64')
+              .toString()
+              .split('')
+              .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+              .join('')
+          );
+          decodedToken = JSON.parse(jsonPayload);
+        } catch (err) {
+          decodedToken = { error: 'Failed to decode JWT', message: err.message };
+        }
+      }
+
+      response.allHeaders = req.headers;
+      response.authorizationHeader = authHeader ? 'present' : 'missing';
+      response.decodedJWT = decodedToken;
+    } else {
+      response.message = 'Set DEBUG=true environment variable to see sensitive debug information';
+    }
+
+    res.json(response);
   });
   app.get('/healthz', (req: Request, res: Response) => {
     res.json({
