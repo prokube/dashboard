@@ -2,6 +2,19 @@ import {Router, Request, Response, NextFunction} from 'express';
 import {KubernetesService} from './k8s_service';
 import {Interval, MetricsService} from './metrics_service';
 
+/**
+ * Dashboard link structure.
+ */
+interface DashboardLink {
+  type: 'item' | 'section';
+  text: string;
+  link?: string;
+  icon?: string;
+  requiredRoles?: string[];
+  items?: DashboardLink[];
+  [key: string]: unknown;
+}
+
 export const ERRORS = {
   no_metrics_service_configured: 'No metrics service configured',
   operation_not_supported: 'Operation not supported',
@@ -93,7 +106,7 @@ export class Api {
               const userGroups = req.user?.groups || [];
               const allUserPermissions = [...userRoles, ...userGroups];
               
-              const filterLinks = (linkArray: any[]) => {
+              const filterLinks = (linkArray: DashboardLink[]): DashboardLink[] => {
                 if (!linkArray) return linkArray;
                 return linkArray.filter(link => {
                   if (link.type === 'section' && link.items) {

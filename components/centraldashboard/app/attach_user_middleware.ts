@@ -1,11 +1,29 @@
 import {NextFunction, Request, RequestHandler, Response} from 'express';
 
 /**
+ * JWT token payload structure.
+ * Supports multiple OIDC provider formats.
+ */
+interface JWTPayload {
+  groups?: string[];
+  roles?: string[];
+  realm_access?: {
+    roles?: string[];
+  };
+  resource_access?: {
+    [client: string]: {
+      roles?: string[];
+    };
+  };
+  [key: string]: unknown;
+}
+
+/**
  * Decodes a JWT token without verification (for extracting claims).
  * Note: This does NOT verify the token signature. Token verification
  * should be done by the authentication proxy (oidc-authservice).
  */
-function decodeJWT(token: string): any {
+function decodeJWT(token: string): JWTPayload | null {
   try {
     const base64Url = token.split('.')[1];
     const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
@@ -31,7 +49,7 @@ function decodeJWT(token: string): any {
  * - realm_access.roles: string[] (Keycloak format)
  * - resource_access.<client>.roles: string[] (Keycloak client roles)
  */
-function extractRolesAndGroups(decodedToken: any): {roles: string[], groups: string[]} {
+function extractRolesAndGroups(decodedToken: JWTPayload | null): {roles: string[], groups: string[]} {
   const roles: string[] = [];
   const groups: string[] = [];
 
